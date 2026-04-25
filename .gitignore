@@ -24,9 +24,7 @@ tensorboard/
 *.onnx
 
 # Dataset / medical images
-data/
 dataset/
-datasets/
 *.nii
 *.nii.gz
 *.npy
