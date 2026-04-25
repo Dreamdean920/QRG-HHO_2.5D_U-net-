@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Training outputs
+outputs/
+runs/
+logs/
+checkpoints/
+wandb/
+tensorboard/
+
+# Model weights
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# Dataset / medical images
+data/
+dataset/
+datasets/
+*.nii
+*.nii.gz
+*.npy
+*.npz
+
+# Archives
+*.zip
+*.rar
+*.7z
+
+# System files
+.DS_Store
+Thumbs.db

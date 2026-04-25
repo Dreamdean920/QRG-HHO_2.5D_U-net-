@@ -1,0 +1,2 @@
+﻿version_name,input_size,batch_size,lr,use_augmentation,best_epoch,best_val_dice,best_val_iou,test_dice,test_iou
+Baseline-Strict-A,256,2,0.001,False,6,0.9200115591195142,0.8968768290732495,0.978166418938549,0.9583075803481728

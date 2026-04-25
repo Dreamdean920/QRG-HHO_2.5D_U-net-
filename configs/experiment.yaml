@@ -1,0 +1,65 @@
+project_name: qrghgs_unet_paper_oldstrong
+
+output_root: outputs/week4
+maximize_metric: val_dice
+
+search:
+  n_trials: 30
+  random_seed: 3407
+  short_eval_epochs: 20
+  confirm_epochs: 20
+  eval_seeds: [42]
+  confirm_seeds: [42, 52, 62, 72, 82]
+  max_concurrent: 1
+
+space:
+  lr:
+    type: float
+    low: 0.0012
+    high: 0.0019
+    log: false
+  dice_weight:
+    type: float
+    low: 0.62
+    high: 0.80
+  batch_size:
+    type: categorical
+    choices: [2, 4, 8]
+
+train_command:
+  short_eval: >
+    python scripts/train_week3_unet.py
+    --input_mode 2.5d
+    --save_root outputs/week4/train_runs
+    --no_post
+    --lr {lr}
+    --dice_weight {dice_weight}
+    --batch_size {batch_size}
+    --epochs {epochs}
+    --seed {seed}
+    --run_name {run_name}
+    --output_json {output_json}
+
+  confirm_eval: >
+    python scripts/train_week3_unet.py
+    --input_mode 2.5d
+    --save_root outputs/week4/train_runs
+    --no_post
+    --lr {lr}
+    --dice_weight {dice_weight}
+    --batch_size {batch_size}
+    --epochs {epochs}
+    --seed {seed}
+    --run_name {run_name}
+    --output_json {output_json}
+
+qrg_hgs:
+  population_size: 6
+  max_iters: 10
+  l: 0.08
+  qrg_start_ratio: 0.5
+  qrg_theta_init: 0.3141592654
+  qrg_theta_final: 0.0523598776
+  stagnation_patience: 2
+  elite_keep_ratio: 0.2
+  restart_ratio: 0.2

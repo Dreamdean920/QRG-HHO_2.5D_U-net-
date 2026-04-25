@@ -1,0 +1,43 @@
+project_name: B_Project_QRG_UNet
+seed: 42
+
+data:
+  ct_dir: "C:/Users/13178/Documents/MATLAB/医学图像/COVID-19-CT-Seg_20cases"
+  mask_dir: "C:/Users/13178/Documents/MATLAB/医学图像/Lung_Mask"
+  splits_dir: "./data/splits"
+  report_dir: "./results"
+  preview_dir: "./data/preview"
+  file_suffix: ".nii.gz"
+
+train:
+  input_size: 256
+  batch_size: 2
+  epochs: 20
+  lr: 0.001
+  num_workers: 0
+  use_augmentation: false
+
+model:
+  name: unet_2d
+  in_channels: 1
+  num_classes: 1
+
+loss:
+  name: bce_dice
+  bce_weight: 0.5
+  dice_weight: 0.5
+
+early_stopping:
+  monitor: val_dice
+  patience: 5
+
+checkpoint:
+  save_best_only: true
+  monitor: val_dice
+
+
+metrics:
+  - dice
+  - iou
+  - sens
+  - spec
