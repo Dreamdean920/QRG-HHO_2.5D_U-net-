@@ -1,0 +1,3 @@
+coronacases_009.nii.gz
+coronacases_001.nii.gz
+coronacases_004.nii.gz
