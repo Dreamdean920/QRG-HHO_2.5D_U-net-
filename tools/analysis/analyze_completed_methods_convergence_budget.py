@@ -7,9 +7,9 @@ from itertools import cycle
 # =========================================================
 # 0. 路径配置
 # =========================================================
-INPUT_CSV = Path("outputs/real_compare_7methods/compare_raw.csv")
+INPUT_CSV = Path("outputs/paper_main_structv3_real_benchmark/compare_raw.csv")
 
-OUT_DIR = Path("outputs/real_compare_7methods/convergence_budget_analysis_completed")
+OUT_DIR = Path("outputs/paper_main_structv3_real_benchmark/analysis_trial_budget_completed_methods")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 CURVE_CSV = OUT_DIR / "convergence_best_so_far_completed.csv"

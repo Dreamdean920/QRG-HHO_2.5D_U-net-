@@ -27,7 +27,7 @@ import pandas as pd
 # 1. 路径配置
 # =========================================================
 
-ROOT = Path(r"C:\Users\13178\Desktop\B_Project_QRG_UNet\outputs\real_compare_7methods")
+ROOT = Path(r"C:\Users\13178\Desktop\B_Project_QRG_UNet\outputs\paper_main_structv3_real_benchmark")
 
 SUMMARY_CSV = ROOT / "compare_summary.csv"
 RAW_CSV = ROOT / "compare_raw.csv"

@@ -10,7 +10,7 @@ import pandas as pd
 # 0. 路径配置
 # =========================================================
 PROJECT_ROOT = Path(".")
-BASE_OUT_ROOT = PROJECT_ROOT / "outputs" / "real_compare_7methods"
+BASE_OUT_ROOT = PROJECT_ROOT / "outputs" / "paper_main_structv3_real_benchmark"
 
 SOURCE_CSV = BASE_OUT_ROOT / "compare_raw.csv"
 

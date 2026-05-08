@@ -12,7 +12,7 @@ import pandas as pd
 # 0. 全局配置：统一写入原目录
 # =========================================================
 PROJECT_ROOT = Path(".")
-OUT_ROOT = PROJECT_ROOT / "outputs" / "real_compare_7methods"
+OUT_ROOT = PROJECT_ROOT / "outputs" / "paper_main_structv3_real_benchmark"
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
 TRAIN_SAVE_ROOT = OUT_ROOT / "train_runs"

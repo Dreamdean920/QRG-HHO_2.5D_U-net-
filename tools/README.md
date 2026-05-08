@@ -9,6 +9,12 @@
 当前主线分析优先运行：
 
 ```bash
-python tools/analysis/analyze_convergence_and_budget.py
-python tools/analysis/analyze_time_efficiency.py
+python tools/analysis/analyze_completed_methods_convergence_budget.py
+python tools/analysis/analyze_time_completed_methods.py
 ```
+
+维护脚本命名：
+
+- `maintenance/archive_failed_lines_from_main_results.py`：把失败探索线从主结果中归档。
+- `maintenance/clean_failed_qrghgs_lines.py`：清理低质量 QRG-HGS 结果。
+- `maintenance/restore_failed_line_json_from_backup.py`：从备份恢复失败线 JSON。

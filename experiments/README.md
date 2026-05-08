@@ -10,5 +10,12 @@
 建议从项目根目录运行脚本，例如：
 
 ```bash
-python experiments/real_compare/run_real_compare_7methods.py
+python experiments/real_compare/run_paper_main_real_benchmark.py
 ```
+
+主线脚本命名：
+
+- `real_compare/run_paper_main_real_benchmark.py`：论文主线真实对比。
+- `real_compare/run_main_qrghgs_struct_v3.py`：冻结的 Struct-v3 主方法。
+- `real_compare/run_explore_structv3_ablation_directions.py`：Struct-v3 的探索和消融方向。
+- `surrogate/failed_surrogate_qrghgs_*`：代理模型历史失败/归档线。

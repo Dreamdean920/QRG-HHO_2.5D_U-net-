@@ -2,20 +2,20 @@
 
 本项目围绕 `2.5D U-Net` 肺部感染分割实验，核心任务是比较不同超参数搜索方法在真实训练下的表现。当前最应该作为论文和汇报主线的结果目录是：
 
-`outputs/real_compare_7methods`
+`outputs/paper_main_structv3_real_benchmark`
 
-这个目录名仍叫 `7methods`，但当前清理后的汇总表实际包含 8 个方法/版本：`random`、`tpe`、`pso`、`ga`、`hgs`、`qrghgs_baseline`、`qrghgs_hybrid`、`qrghgs_struct_v3`。每个方法均有 30 次成功 trial。
+该目录是按整合文档重新命名后的主线结果归档，实际包含 8 个方法/版本：`random`、`tpe`、`pso`、`ga`、`hgs`、`qrghgs_baseline`、`qrghgs_hybrid`、`qrghgs_struct_v3`。每个方法均有 30 次成功 trial。
 
 ## 当前主线结果
 
 主结果文件：
 
-- `outputs/real_compare_7methods/compare_summary.csv`：方法级汇总表
-- `outputs/real_compare_7methods/compare_raw.csv`：每个 trial 的原始记录
-- `outputs/real_compare_7methods/convergence_budget_analysis_completed/`：收敛、小预算、排名图表
-- `outputs/real_compare_7methods/time_analysis_completed/`：时间效率分析图表
-- `outputs/real_compare_7methods/train_runs/`：真实训练输出与 checkpoint
-- `outputs/real_compare_7methods/trial_json/`：每次 trial 的 JSON 结果
+- `outputs/paper_main_structv3_real_benchmark/compare_summary.csv`：方法级汇总表
+- `outputs/paper_main_structv3_real_benchmark/compare_raw.csv`：每个 trial 的原始记录
+- `outputs/paper_main_structv3_real_benchmark/analysis_trial_budget_completed_methods/`：收敛、小预算、排名图表
+- `outputs/paper_main_structv3_real_benchmark/analysis_time_budget_completed_methods/`：时间效率分析图表
+- `outputs/paper_main_structv3_real_benchmark/train_runs/`：真实训练输出与 checkpoint
+- `outputs/paper_main_structv3_real_benchmark/trial_json/`：每次 trial 的 JSON 结果
 
 从当前 `compare_summary.csv` 和排名表看：
 
@@ -69,6 +69,25 @@ B_Project_QRG_UNet/
 
 根目录现在只保留项目级文件和少量核心模块。实验入口不再散在根目录，而是放进 `experiments/`；结果分析和清理脚本放进 `tools/`。
 
+## 命名规则
+
+本轮整理按 `QRG_HGS_UNet_代码与实验结果整合说明` 中的定位重命名：
+
+| 定位 | 新名称 | 含义 |
+|---|---|---|
+| 主线结果 | `outputs/paper_main_structv3_real_benchmark` | 论文主线真实训练 benchmark |
+| 主线搜索脚本 | `experiments/real_compare/run_paper_main_real_benchmark.py` | Random/TPE/PSO/GA/HGS/QRG-HGS 的完整真实对比 |
+| Struct-v3 主方法脚本 | `experiments/real_compare/run_main_qrghgs_struct_v3.py` | 冻结的 Local + Top-k + Global restart 分层扰动 QRG-HGS |
+| Struct-v3 探索脚本 | `experiments/real_compare/run_explore_structv3_ablation_directions.py` | elite、trigger、region、dual-branch 等探索方向 |
+| Top3 确认脚本 | `experiments/confirm/confirm_paper_main_top3_multiseed.py` | 主线 Top3 多 seed confirm |
+| Trial 预算分析 | `tools/analysis/analyze_completed_methods_convergence_budget.py` | 只分析跑满 30 trial 的方法 |
+| 时间预算分析 | `tools/analysis/analyze_time_completed_methods.py` | 只分析跑满方法的时间效率 |
+| 失败线归档脚本 | `tools/maintenance/archive_failed_lines_from_main_results.py` | 将失败/低质量方法从主结果中移出或备份 |
+| 失败线清理脚本 | `tools/maintenance/clean_failed_qrghgs_lines.py` | 清理低质量 QRG-HGS 结果 |
+| 历史失败代理线 | `experiments/surrogate/failed_surrogate_qrghgs_*` | 代理模型路线的历史探索归档 |
+
+失败线在文档中对应 `struct_v2`、`struct_cons`、`struct_bal`、`v3_fitness`、`v4_memory`、`hybrid_topk_light`、`tuned` 等方向。当前主结果 CSV 已经清理为 8 个跑满方法，因此这些失败线主要保留在备份、维护脚本和历史探索脚本中，不进入主结果表。
+
 ## 代码说明
 
 ### 训练与数据
@@ -92,30 +111,30 @@ B_Project_QRG_UNet/
 
 ### 当前主线实验
 
-- `experiments/real_compare/run_real_compare_7methods.py`：当前真实训练多方法对比主入口，输出到 `outputs/real_compare_7methods`。
-- `experiments/real_compare/run_struct_v3_5directions.py`：围绕 `qrghgs_struct_v3` 的 5 个方向扩展实验。
-- `experiments/real_compare/qrghgs_struct_v3.py`：结构化扰动版 QRG-HGS 实验脚本。
+- `experiments/real_compare/run_paper_main_real_benchmark.py`：当前真实训练多方法对比主入口，输出到 `outputs/paper_main_structv3_real_benchmark`。
+- `experiments/real_compare/run_explore_structv3_ablation_directions.py`：围绕 `qrghgs_struct_v3` 的 5 个方向扩展实验。
+- `experiments/real_compare/run_main_qrghgs_struct_v3.py`：结构化扰动版 QRG-HGS 实验脚本。
 - `experiments/real_compare/run_compare_random_tpe_hgs.py`、`run_compare_all_methods.py`：较早的真实训练对比入口。
 - `experiments/real_compare/run_final_compare_7methods.py`：历史最终对比入口，依赖当前缺失的 `surrogate_model_checked.py`，暂时视为历史脚本。
 
 ### 确认实验
 
-- `experiments/confirm/confirm_top3_multiseed.py`：从当前结果中选择 Top-K 候选并做多 seed 确认。
+- `experiments/confirm/confirm_paper_main_top3_multiseed.py`：从当前结果中选择 Top-K 候选并做多 seed 确认。
 - `experiments/confirm/run_confirm_top3.py`：手工指定 Top3 参数的确认入口。
 - `experiments/confirm/multiseed_confirm.py`：基于配置文件的多 seed 确认 runner。
 
 ### 分析与图表
 
-- `tools/analysis/analyze_convergence_and_budget.py`：读取 `outputs/real_compare_7methods/compare_raw.csv`，生成当前主线收敛曲线、预算对比和排名表。
-- `tools/analysis/analyze_time_efficiency.py`：生成时间预算、time-to-target、时间-性能权衡图表。
+- `tools/analysis/analyze_completed_methods_convergence_budget.py`：读取 `outputs/paper_main_structv3_real_benchmark/compare_raw.csv`，生成当前主线收敛曲线、预算对比和排名表。
+- `tools/analysis/analyze_time_completed_methods.py`：生成时间预算、time-to-target、时间-性能权衡图表。
 - `tools/analysis/analyze_small_budget.py`、`plot_all_methods_convergence.py`：早期 `week4_merged` 结果分析脚本。
 - `tools/analysis/summarize_results.py`：通用 CSV 汇总工具。
 
 ### 结果维护
 
-- `tools/maintenance/clean_low_qrghgs.py`：安全清理低质量 QRG-HGS 方法，并备份原文件。
-- `tools/maintenance/delete_three_qrghgs_methods.py`：删除指定 QRG-HGS 方法的历史清理脚本。
-- `tools/maintenance/restore_deleted_json_from_raw_backup.py`：从 raw backup 恢复 JSON。
+- `tools/maintenance/clean_failed_qrghgs_lines.py`：安全清理低质量 QRG-HGS 方法，并备份原文件。
+- `tools/maintenance/archive_failed_lines_from_main_results.py`：归档指定失败线方法的历史清理脚本。
+- `tools/maintenance/restore_failed_line_json_from_backup.py`：从 raw backup 恢复 JSON。
 - `tools/results/merge_week4_qrghgs_with_week4_compare.py`、`merge_warmup_into_history.py`、`warmup_batch_samples.py`：早期结果合并和 warmup 工具。
 
 ### 历史代理模型脚本
@@ -126,18 +145,18 @@ B_Project_QRG_UNet/
 
 建议按这个顺序看：
 
-1. 先看 `outputs/real_compare_7methods/compare_summary.csv`，确认各方法最终表现。
-2. 再看 `outputs/real_compare_7methods/convergence_budget_analysis_completed/method_rank_completed.csv`，确认 best、mean、stability 的排名。
-3. 看 `tools/analysis/analyze_convergence_and_budget.py` 和 `tools/analysis/analyze_time_efficiency.py`，理解主线图表如何生成。
-4. 看 `experiments/real_compare/run_real_compare_7methods.py`，理解每种搜索方法如何调用真实训练。
+1. 先看 `outputs/paper_main_structv3_real_benchmark/compare_summary.csv`，确认各方法最终表现。
+2. 再看 `outputs/paper_main_structv3_real_benchmark/analysis_trial_budget_completed_methods/method_rank_completed.csv`，确认 best、mean、stability 的排名。
+3. 看 `tools/analysis/analyze_completed_methods_convergence_budget.py` 和 `tools/analysis/analyze_time_completed_methods.py`，理解主线图表如何生成。
+4. 看 `experiments/real_compare/run_paper_main_real_benchmark.py`，理解每种搜索方法如何调用真实训练。
 5. 最后看 `scripts/train_week3_unet.py`，理解每个 trial 的训练、验证、测试指标来自哪里。
 
 所有命令建议在项目根目录运行，例如：
 
 ```bash
-python experiments/real_compare/run_real_compare_7methods.py
-python tools/analysis/analyze_convergence_and_budget.py
-python tools/analysis/analyze_time_efficiency.py
+python experiments/real_compare/run_paper_main_real_benchmark.py
+python tools/analysis/analyze_completed_methods_convergence_budget.py
+python tools/analysis/analyze_time_completed_methods.py
 ```
 
 如果只想复现分析图表，不需要重新训练模型，直接运行两个 `tools/analysis` 脚本即可，它们会读取已有的 `compare_raw.csv`。
@@ -155,10 +174,10 @@ pip install torch torchvision scipy optuna
 
 ## 输出目录阅读方式
 
-- `outputs/real_compare_7methods`：当前主线，优先阅读。
+- `outputs/paper_main_structv3_real_benchmark`：当前主线，优先阅读。
 - `outputs/week4_compare`、`outputs/week4_merged`：早期 Random/TPE/HGS/QRG-HGS 对比与合并结果。
 - `outputs/qrghgs_10_versions`、`outputs/qrghgs_before_after`：历史代理模型版本分析结果。
 - `outputs/batch_warmup`、`outputs/history_augmented`：早期代理模型 warmup 与历史表。
 - `_backup_safe_clean_...`：清理脚本生成的备份，不作为主结果引用。
 
-后续写论文或报告时，建议把 `outputs/real_compare_7methods` 作为主线结果来源，其它 `outputs` 目录只作为历史探索或补充实验。
+后续写论文或报告时，建议把 `outputs/paper_main_structv3_real_benchmark` 作为主线结果来源，其它 `outputs` 目录只作为历史探索或补充实验。

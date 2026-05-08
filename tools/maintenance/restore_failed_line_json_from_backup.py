@@ -21,7 +21,7 @@ import math
 # 1. 路径配置
 # =========================
 
-ROOT = Path(r"C:\Users\13178\Desktop\B_Project_QRG_UNet\outputs\real_compare_7methods")
+ROOT = Path(r"C:\Users\13178\Desktop\B_Project_QRG_UNet\outputs\paper_main_structv3_real_benchmark")
 
 BACKUP_DIR = ROOT / "_backup_before_clean_low_qrghgs_20260507_103341"
 
