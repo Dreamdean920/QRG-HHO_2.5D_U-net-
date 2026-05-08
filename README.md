@@ -1,462 +1,164 @@
 # B_Project_QRG_UNet
 
-本项目用于 `2.5D U-Net` 肺部感染分割实验中的超参数搜索与对比，核心目标是比较 `Random`、`TPE`、`HGS`、`QRG-HGS`，并在此基础上加入**代理模型（surrogate model）**来减少真实训练次数、扩大搜索空间、提高候选筛选效率。
+本项目围绕 `2.5D U-Net` 肺部感染分割实验，核心任务是比较不同超参数搜索方法在真实训练下的表现。当前最应该作为论文和汇报主线的结果目录是：
 
-目前仓库中已经完成的重点内容包括：
+`outputs/real_compare_7methods`
 
-- 2.5D U-Net 训练与评估主流程
-- QRG-HGS / HGS / Random / TPE 等搜索方法
-- 代理模型建立：`RandomForest` 集成回归器 + 不确定性估计
-- 搜索空间扩大：不再只固定在 `batch_size=4`，而是支持 `batch_size in [2, 4, 8]`
-- warmup 预热样本补齐与历史记录合并
-- 代理空间下的多方法对比
-- QRG-HGS 改进前后对比
-- QRG-HGS 十个版本对比
-- 小预算分析、收敛曲线绘图、Top3 多 seed 确认
+这个目录名仍叫 `7methods`，但当前清理后的汇总表实际包含 8 个方法/版本：`random`、`tpe`、`pso`、`ga`、`hgs`、`qrghgs_baseline`、`qrghgs_hybrid`、`qrghgs_struct_v3`。每个方法均有 30 次成功 trial。
 
-## 1. 项目里这些方法分别有什么用
+## 当前主线结果
 
-### 1.1 真实训练入口
+主结果文件：
 
-核心训练脚本是：
+- `outputs/real_compare_7methods/compare_summary.csv`：方法级汇总表
+- `outputs/real_compare_7methods/compare_raw.csv`：每个 trial 的原始记录
+- `outputs/real_compare_7methods/convergence_budget_analysis_completed/`：收敛、小预算、排名图表
+- `outputs/real_compare_7methods/time_analysis_completed/`：时间效率分析图表
+- `outputs/real_compare_7methods/train_runs/`：真实训练输出与 checkpoint
+- `outputs/real_compare_7methods/trial_json/`：每次 trial 的 JSON 结果
 
-- `scripts/train_week3_unet.py`
+从当前 `compare_summary.csv` 和排名表看：
 
-它的作用是：
+| 方法 | 成功 trial | best val Dice | best test Dice | mean test Dice | 平均单次时间 |
+|---|---:|---:|---:|---:|---:|
+| `ga` | 30 | 0.964454 | 0.963712 | 0.958018 | 0.704 h |
+| `pso` | 30 | 0.963867 | 0.961313 | 0.957691 | 0.488 h |
+| `qrghgs_struct_v3` | 30 | **0.967263** | **0.963958** | 0.957388 | 0.560 h |
+| `qrghgs_hybrid` | 30 | 0.965078 | 0.963023 | 0.957363 | 0.803 h |
+| `random` | 30 | 0.965168 | 0.962080 | 0.957300 | 0.783 h |
+| `tpe` | 30 | 0.964760 | 0.961081 | 0.957194 | 0.514 h |
+| `qrghgs_baseline` | 30 | 0.963337 | 0.961255 | 0.957121 | **0.405 h** |
+| `hgs` | 30 | 0.964982 | 0.961883 | 0.954911 | 0.523 h |
 
-- 按给定超参数训练 `2.5D U-Net`
-- 在验证集上选择最优 checkpoint
-- 在测试集上输出分割指标
-- 兼容搜索脚本需要的参数格式，如 `--lr`、`--dice_weight`、`--batch_size`、`--run_name`、`--output_json`
+可以这样概括主线结论：
 
-它会生成：
+- `qrghgs_struct_v3` 取得最高验证集 Dice 和最高测试集 Dice，适合作为 QRG-HGS 改进版的主结果。
+- `ga` 的平均测试 Dice 最高，适合作为强基线对照。
+- `qrghgs_baseline` 平均单次训练时间最短、稳定性排名最好，但峰值指标低于 `qrghgs_struct_v3`。
+- `hgs` 平均测试表现最低且波动较大，可作为说明 QRG 改进必要性的对照。
 
-- 每次运行对应的模型目录
-- 训练日志与中间结果
-- 一个 `json` 结果文件，常见字段包括：
-  - `best_val_dice`
-  - `test_dice`
-  - `test_iou`
-  - `test_sens`
-  - `test_spec`
-  - `time_sec`
-  - `status`
-  - `best_ckpt_path`
+## 项目目录
 
-### 1.2 代理模型有什么用
+整理后的目录职责如下：
 
-相关文件：
+```text
+B_Project_QRG_UNet/
+├── configs/                  # 数据、训练、搜索配置
+├── data/                     # split 文本与预览图
+├── datasets/                 # 2D slice 数据集封装
+├── docs/                     # 阶段性文档
+├── experiments/              # 实验编排入口，按任务分类
+│   ├── confirm/              # Top-K / 多 seed 确认实验
+│   ├── real_compare/         # 真实训练方法对比，当前主线在这里
+│   ├── runners/              # ablation、Ray Tune 等通用 runner
+│   └── surrogate/            # 历史代理模型实验脚本
+├── models/                   # U-Net 模型结构
+├── outputs/                  # 实验输出、图表、checkpoint、trial JSON
+├── results/                  # 数据检查、slice 索引、baseline 汇总
+├── scripts/                  # 数据处理、训练、测试、推理可视化脚本
+├── search/                   # HGS / QRG-HGS 底层搜索实现
+├── tools/                    # 分析、结果合并、维护清理脚本
+│   ├── analysis/             # 收敛、预算、时间效率、汇总分析
+│   ├── maintenance/          # 清理、恢复、删除低质量方法
+│   └── results/              # warmup 与结果合并工具
+├── utils/                    # loss、metric、后处理
+├── exp_utils.py              # 配置、随机种子、搜索空间采样等通用函数
+├── objective_adapter.py      # 搜索算法调用训练脚本的适配层
+└── qrghgs.py                 # Adaptive QRG-HGS 封装
+```
 
-- `surrogate_model.py`
-- `surrogate_model_checked.py`
+根目录现在只保留项目级文件和少量核心模块。实验入口不再散在根目录，而是放进 `experiments/`；结果分析和清理脚本放进 `tools/`。
 
-代理模型的作用是：
+## 代码说明
 
-- 先读取已有历史实验结果
-- 学习超参数到 `best_val_dice` 的映射关系
-- 对大量候选点进行快速打分，而不是每个点都真实训练
-- 同时给出预测均值和不确定性
-- 使用 `acq = pred_mean + beta * pred_std` 挑选“看起来好且值得探索”的点
+### 训练与数据
 
-这里采用的是：
+- `scripts/train_week3_unet.py`：当前主要真实训练入口。支持 `--lr`、`--dice_weight`、`--batch_size`、`--epochs`、`--seed`、`--run_name`、`--output_json` 等参数，搜索脚本都会调用它。
+- `scripts/train_week2_unet.py`：早期训练版本，保留用于对照。
+- `scripts/train_baseline.py`、`scripts/test_baseline.py`：baseline 训练与测试。
+- `scripts/build_slice_index.py`、`scripts/check_data_nii.py`、`scripts/make_splits_nii.py`、`scripts/preview_slices.py`：数据划分、检查、slice 索引和预览。
+- `datasets/dataset_2d.py`：读取 NIfTI 数据并构造 2D slice dataset。
+- `models/unet_2d.py`：标准 2D U-Net 模型。
+- `utils/losses.py`、`utils/metrics.py`、`utils/postprocess.py`：损失、Dice/IoU 指标和预测后处理。
 
-- `RandomForestRegressor` 集成
-- 多个 bootstrap 子模型构造近似不确定性
+### 搜索算法
 
-`surrogate_model_checked.py` 比基础版多了一层检查：
+- `search/hgs_core.py`：基础 HGS 搜索实现。
+- `search/qrg_hgs_core.py`：QRG-HGS 核心实现。
+- `search/qrghgs_dimtheta.py`：带动态角度参数的 QRG-HGS 版本。
+- `search/search_hgs.py`、`search/search_hgs_dimtheta.py`：较早的命令行搜索入口。
+- `qrghgs.py`：面向配置文件和 `ObjectiveAdapter` 的 Adaptive QRG-HGS 封装。
+- `objective_adapter.py`：把搜索算法给出的超参数转成训练命令，并读取训练 JSON 作为 fitness。
 
-- 检查历史数据在不同 `batch_size` 上是否覆盖充分
-- 提醒哪些 batch 样本太少，避免代理模型偏向单一 batch
+### 当前主线实验
 
-### 1.3 扩大搜索空间有什么用
+- `experiments/real_compare/run_real_compare_7methods.py`：当前真实训练多方法对比主入口，输出到 `outputs/real_compare_7methods`。
+- `experiments/real_compare/run_struct_v3_5directions.py`：围绕 `qrghgs_struct_v3` 的 5 个方向扩展实验。
+- `experiments/real_compare/qrghgs_struct_v3.py`：结构化扰动版 QRG-HGS 实验脚本。
+- `experiments/real_compare/run_compare_random_tpe_hgs.py`、`run_compare_all_methods.py`：较早的真实训练对比入口。
+- `experiments/real_compare/run_final_compare_7methods.py`：历史最终对比入口，依赖当前缺失的 `surrogate_model_checked.py`，暂时视为历史脚本。
 
-仓库前期很多对比是为了公平，常常固定：
+### 确认实验
 
-- `batch_size = 4`
+- `experiments/confirm/confirm_top3_multiseed.py`：从当前结果中选择 Top-K 候选并做多 seed 确认。
+- `experiments/confirm/run_confirm_top3.py`：手工指定 Top3 参数的确认入口。
+- `experiments/confirm/multiseed_confirm.py`：基于配置文件的多 seed 确认 runner。
 
-后续加入代理模型后，搜索空间被扩大为：
+### 分析与图表
 
-- `lr`
-- `dice_weight`
-- `batch_size in [2, 4, 8]`
+- `tools/analysis/analyze_convergence_and_budget.py`：读取 `outputs/real_compare_7methods/compare_raw.csv`，生成当前主线收敛曲线、预算对比和排名表。
+- `tools/analysis/analyze_time_efficiency.py`：生成时间预算、time-to-target、时间-性能权衡图表。
+- `tools/analysis/analyze_small_budget.py`、`plot_all_methods_convergence.py`：早期 `week4_merged` 结果分析脚本。
+- `tools/analysis/summarize_results.py`：通用 CSV 汇总工具。
 
-这样做的意义是：
+### 结果维护
 
-- 让搜索不只在单一 batch 上做局部优化
-- 让 QRG-HGS 和其他方法有机会发现更优的训练配置
-- 更接近真实“自动调参”场景
+- `tools/maintenance/clean_low_qrghgs.py`：安全清理低质量 QRG-HGS 方法，并备份原文件。
+- `tools/maintenance/delete_three_qrghgs_methods.py`：删除指定 QRG-HGS 方法的历史清理脚本。
+- `tools/maintenance/restore_deleted_json_from_raw_backup.py`：从 raw backup 恢复 JSON。
+- `tools/results/merge_week4_qrghgs_with_week4_compare.py`、`merge_warmup_into_history.py`、`warmup_batch_samples.py`：早期结果合并和 warmup 工具。
 
-为了避免代理模型只见过 `batch=4` 而导致预测失真，项目中又加入了：
+### 历史代理模型脚本
 
-- `warmup_batch_samples.py`
-- `merge_warmup_into_history.py`
+`experiments/surrogate/` 中的脚本用于早期代理模型对比，例如 QRG-HGS 改进前后、十个版本对比。但当前工作区里 `surrogate_model.py` 和 `surrogate_model_checked.py` 处于已删除状态，因此这些脚本暂时不能直接运行。若后续要恢复代理模型主线，需要先恢复或重写这两个模块。
 
-也就是先补少量 `batch=2` 和 `batch=8` 的真实样本，再和历史结果合并。
+## 怎么从这里入手
 
-## 2. 推荐阅读的主线
+建议按这个顺序看：
 
-如果你是第一次看这个仓库，建议按下面顺序理解：
+1. 先看 `outputs/real_compare_7methods/compare_summary.csv`，确认各方法最终表现。
+2. 再看 `outputs/real_compare_7methods/convergence_budget_analysis_completed/method_rank_completed.csv`，确认 best、mean、stability 的排名。
+3. 看 `tools/analysis/analyze_convergence_and_budget.py` 和 `tools/analysis/analyze_time_efficiency.py`，理解主线图表如何生成。
+4. 看 `experiments/real_compare/run_real_compare_7methods.py`，理解每种搜索方法如何调用真实训练。
+5. 最后看 `scripts/train_week3_unet.py`，理解每个 trial 的训练、验证、测试指标来自哪里。
 
-1. `scripts/train_week3_unet.py`
-2. `run_compare_random_tpe_hgs.py`
-3. `merge_week4_qrghgs_with_week4_compare.py`
-4. `warmup_batch_samples.py`
-5. `merge_warmup_into_history.py`
-6. `run_surrogate_search.py`
-7. `run_surrogate_loop.py`
-8. `run_surrogate_multi_methods.py`
-9. `compare_qrghgs_before_after_surrogate.py`
-10. `compare_qrghgs_10_versions_surrogate.py`
+所有命令建议在项目根目录运行，例如：
 
-## 3. 怎么运行，以及每一步会生成什么
+```bash
+python experiments/real_compare/run_real_compare_7methods.py
+python tools/analysis/analyze_convergence_and_budget.py
+python tools/analysis/analyze_time_efficiency.py
+```
 
-### 3.1 安装依赖
+如果只想复现分析图表，不需要重新训练模型，直接运行两个 `tools/analysis` 脚本即可，它们会读取已有的 `compare_raw.csv`。
 
-先安装基础依赖：
+## 依赖
+
+基础依赖：
 
 ```bash
 pip install -r requirements.txt
-pip install scipy torch torchvision
+pip install torch torchvision scipy optuna
 ```
 
-如果你要运行 TPE，对应还需要：
+`requirements.txt` 中未写入 `torch`、`torchvision`、`scipy`、`optuna`，但当前训练和搜索脚本会用到它们。
 
-```bash
-pip install optuna
-```
+## 输出目录阅读方式
 
-## 4. 基础真实搜索与方法对比
+- `outputs/real_compare_7methods`：当前主线，优先阅读。
+- `outputs/week4_compare`、`outputs/week4_merged`：早期 Random/TPE/HGS/QRG-HGS 对比与合并结果。
+- `outputs/qrghgs_10_versions`、`outputs/qrghgs_before_after`：历史代理模型版本分析结果。
+- `outputs/batch_warmup`、`outputs/history_augmented`：早期代理模型 warmup 与历史表。
+- `_backup_safe_clean_...`：清理脚本生成的备份，不作为主结果引用。
 
-### 4.1 运行 Random / TPE / HGS 三方法对比
-
-```bash
-python run_compare_random_tpe_hgs.py
-```
-
-作用：
-
-- 在统一协议下运行 `Random`、`TPE`、`HGS`
-- 使用真实训练进行评估
-- 作为 QRG-HGS 的基线对照
-
-主要输出：
-
-- `outputs/week4_compare/compare_raw.csv`
-- `outputs/week4_compare/compare_summary.csv`
-- `outputs/week4_compare/trial_json/*.json`
-- `outputs/week4_compare/train_runs/...`
-
-其中：
-
-- `compare_raw.csv` 记录每一次 trial 的详细结果
-- `compare_summary.csv` 汇总每种方法的最优值、均值、方差等
-
-### 4.2 如果想跑更完整的多方法真实对比
-
-```bash
-python run_compare_all_methods.py
-```
-
-作用：
-
-- 在真实训练空间里运行更多方法
-- 用统一预算做更完整的方法对比
-
-主要输出：
-
-- `outputs/week4_compare_all/compare_raw.csv`
-- `outputs/week4_compare_all/compare_summary.csv`
-- `outputs/week4_compare_all/trial_json/*.json`
-
-## 5. 合并 QRG-HGS 与基线结果
-
-### 5.1 合并 week4 的 QRG-HGS 和 week4_compare 的基线结果
-
-```bash
-python merge_week4_qrghgs_with_week4_compare.py
-```
-
-作用：
-
-- 从两个目录中提取已经完成的真实实验结果
-- 统一字段格式
-- 合并成一份总表，便于后续画图和预算分析
-
-主要输出：
-
-- `outputs/week4_merged/qrghgs_from_week4.csv`
-- `outputs/week4_merged/baseline_from_week4_compare.csv`
-- `outputs/week4_merged/all_methods_merged.csv`
-- `outputs/week4_merged/all_methods_summary.csv`
-
-## 6. 代理模型与扩大搜索空间
-
-### 6.1 先补 warmup 样本
-
-```bash
-python warmup_batch_samples.py
-```
-
-作用：
-
-- 真实训练少量 `batch=2` 和 `batch=8` 的样本
-- 给代理模型补齐跨 batch 的历史数据
-- 降低“只见过 batch=4”带来的偏置
-
-主要输出：
-
-- `outputs/batch_warmup/warmup_batch_results.csv`
-- `outputs/batch_warmup/*.json`
-- `outputs/batch_warmup/train_runs/...`
-
-### 6.2 把 warmup 样本并入历史总表
-
-```bash
-python merge_warmup_into_history.py
-```
-
-作用：
-
-- 把 `warmup_batch_results.csv` 合并进已有历史结果
-- 形成代理模型训练使用的增强历史表
-
-主要输出：
-
-- `outputs/history_augmented/all_methods_merged_plus_warmup.csv`
-
-这份文件很关键，后面的代理搜索基本都依赖它。
-
-## 7. 代理搜索
-
-### 7.1 单轮代理搜索
-
-```bash
-python run_surrogate_search.py
-```
-
-作用：
-
-- 用历史结果训练代理模型
-- 在代理空间中随机采样大量候选点
-- 用 `pred_mean + beta * pred_std` 选出最值得真实训练的少量点
-- 再把这些候选送去真实训练验证
-
-主要输出：
-
-- `outputs/surrogate_search/selected_candidates.csv`
-- `outputs/surrogate_search/real_eval_results.csv`
-- `outputs/surrogate_search/*.json`
-- `outputs/surrogate_search/train_runs/...`
-
-可以这样理解：
-
-- `selected_candidates.csv` 是代理模型挑出来的“推荐参数”
-- `real_eval_results.csv` 是这些推荐参数真实训练后的结果
-
-### 7.2 多轮迭代代理搜索
-
-```bash
-python run_surrogate_loop.py
-```
-
-作用：
-
-- 代理模型搜索一轮
-- 真实训练 top 候选
-- 把新结果加入历史
-- 再重新训练代理模型进入下一轮
-
-这相当于一个简化版的“主动学习式调参”。
-
-主要输出：
-
-- `outputs/surrogate_loop/history_updated.csv`
-- `outputs/surrogate_loop/all_new_results.csv`
-- `outputs/surrogate_loop/train_runs/...`
-
-其中：
-
-- `history_updated.csv` 是每轮滚动更新后的历史表
-- `all_new_results.csv` 是多轮新增真实训练结果的汇总
-
-## 8. 代理空间下的多方法对比
-
-### 8.1 比较 Random / TPE / PSO / GA / HGS / QRG-HGS
-
-```bash
-python run_surrogate_multi_methods.py
-```
-
-作用：
-
-- 在同一个代理模型上运行多种搜索方法
-- 每种方法先在代理空间内搜索
-- 再选出 top-k 候选做真实训练
-- 比较不同方法在代理框架下的效果
-
-主要输出：
-
-- `outputs/surrogate_multi_methods/*_surrogate_search.csv`
-- `outputs/surrogate_multi_methods/*_topk_candidates.csv`
-- `outputs/surrogate_multi_methods/*_real_eval.csv`
-- `outputs/surrogate_multi_methods/all_methods_real_eval.csv`
-
-这些文件的含义分别是：
-
-- `*_surrogate_search.csv`：某方法在代理空间里尝试过哪些点
-- `*_topk_candidates.csv`：某方法最终挑出的候选参数
-- `*_real_eval.csv`：这些候选做真实训练后的结果
-- `all_methods_real_eval.csv`：所有方法的真实评估总表
-
-## 9. QRG-HGS 改进版本对比
-
-### 9.1 比较改进前与改进后
-
-```bash
-python compare_qrghgs_before_after_surrogate.py
-```
-
-作用：
-
-- 在同一代理模型下比较 `before` 和 `after` 两个 QRG-HGS 版本
-- 关注 QRG 提前触发、停滞触发、扰动强度增强后是否更有效
-
-主要输出：
-
-- `outputs/qrghgs_before_after/qrghgs_before_surrogate_search.csv`
-- `outputs/qrghgs_before_after/qrghgs_after_surrogate_search.csv`
-- `outputs/qrghgs_before_after/qrghgs_before_real_eval.csv`
-- `outputs/qrghgs_before_after/qrghgs_after_real_eval.csv`
-- `outputs/qrghgs_before_after/qrghgs_before_after_summary.csv`
-
-### 9.2 比较 10 个 QRG-HGS 版本
-
-```bash
-python compare_qrghgs_10_versions_surrogate.py
-```
-
-作用：
-
-- 对多个版本的 `QRG-HGS` 做系统比较
-- 比较是否启用 perturb
-- 比较 QRG 启动时机、停滞耐心值、elite 比例、restart 比例
-- 自动支持断点续跑
-
-主要输出：
-
-- `outputs/qrghgs_10_versions/*_surrogate_search.csv`
-- `outputs/qrghgs_10_versions/*_topk_candidates.csv`
-- `outputs/qrghgs_10_versions/*_real_eval.csv`
-- `outputs/qrghgs_10_versions/all_surrogate_search.csv`
-- `outputs/qrghgs_10_versions/all_real_eval.csv`
-- `outputs/qrghgs_10_versions/summary.csv`
-
-这个脚本适合写论文里的“版本演化”或“设计选择分析”部分。
-
-## 10. Top3 确认实验
-
-### 10.1 对选出的 3 组最好参数做多 seed 验证
-
-```bash
-python run_confirm_top3.py
-```
-
-作用：
-
-- 对当前手工指定的 3 组候选参数做 `5 seeds` 复现
-- 评估最优参数是否稳定，而不是偶然跑得好
-
-主要输出：
-
-- `outputs/week4/confirm_top3_raw.csv`
-- `outputs/week4/confirm_top3_summary.csv`
-- `outputs/week4/confirm_json/*.json`
-- `outputs/week4/confirm_runs/...`
-
-其中：
-
-- `confirm_top3_raw.csv` 是每个 seed 的原始结果
-- `confirm_top3_summary.csv` 是每组参数的均值和标准差汇总
-
-## 11. 可视化与统计分析
-
-### 11.1 画全部方法的收敛曲线
-
-```bash
-python plot_all_methods_convergence.py
-```
-
-作用：
-
-- 从合并总表中读取各方法 trial 结果
-- 计算 `best-so-far`
-- 画出方法收敛曲线
-
-主要输出：
-
-- `outputs/week4_merged/plots/all_methods_best_so_far.csv`
-- `outputs/week4_merged/plots/all_methods_convergence.png`
-
-### 11.2 做小预算分析
-
-```bash
-python analyze_small_budget.py
-```
-
-作用：
-
-- 统计不同方法在小预算 `10 / 20 / 30 trials` 下的表现
-- 对比谁更适合预算受限场景
-- 统计达到目标 Dice 所需的最少 trial 数
-
-主要输出：
-
-- `outputs/week4_merged/small_budget/budget_summary.csv`
-- `outputs/week4_merged/small_budget/best_at_10.png`
-- `outputs/week4_merged/small_budget/best_at_20.png`
-- `outputs/week4_merged/small_budget/best_at_30.png`
-- `outputs/week4_merged/small_budget/convergence_budget_10.png`
-- `outputs/week4_merged/small_budget/convergence_budget_20.png`
-- `outputs/week4_merged/small_budget/convergence_budget_30.png`
-- `outputs/week4_merged/small_budget/target_trials.csv`
-
-## 12. 一个推荐运行顺序
-
-如果是要从现有内容继续做实验，建议按这个顺序：
-
-```bash
-python run_compare_random_tpe_hgs.py
-python merge_week4_qrghgs_with_week4_compare.py
-python plot_all_methods_convergence.py
-python analyze_small_budget.py
-python warmup_batch_samples.py
-python merge_warmup_into_history.py
-python run_surrogate_search.py
-python run_surrogate_loop.py
-python run_surrogate_multi_methods.py
-python compare_qrghgs_before_after_surrogate.py
-python compare_qrghgs_10_versions_surrogate.py
-python run_confirm_top3.py
-```
-
-## 13. 目前这套 README 想表达的结论
-
-可以把当前仓库理解成两条主线：
-
-- 第一条主线：真实训练搜索，对比 `Random / TPE / HGS / QRG-HGS`
-- 第二条主线：基于历史结果训练代理模型，在更大的搜索空间中筛选优质候选，再做少量真实训练验证
-
-其中你已经完成的“代理模型建立”和“扩大搜索空间”，在代码里主要对应：
-
-- 代理模型：`surrogate_model.py`、`surrogate_model_checked.py`
-- 扩大搜索空间：`warmup_batch_samples.py`、`merge_warmup_into_history.py`、`run_surrogate_multi_methods.py`
-- QRG-HGS 改进分析：`compare_qrghgs_before_after_surrogate.py`、`compare_qrghgs_10_versions_surrogate.py`
-
-如果后面要继续写论文，最适合直接引用和整理的结果目录通常是：
-
-- `outputs/week4_merged`
-- `outputs/history_augmented`
-- `outputs/surrogate_multi_methods`
-- `outputs/qrghgs_before_after`
-- `outputs/qrghgs_10_versions`
-
+后续写论文或报告时，建议把 `outputs/real_compare_7methods` 作为主线结果来源，其它 `outputs` 目录只作为历史探索或补充实验。
